@@ -579,9 +579,12 @@
   <div class="modal">
     <h2>✏️ 添加单词卡片</h2>
     <label>英文单词</label>
-    <input id="m-en" type="text" placeholder="e.g. Serendipity" autocomplete="off">
-    <label>音标（可选）</label>
-    <input id="m-ph" type="text" placeholder="e.g. /ˌser.ənˈdɪp.ɪ.ti/" autocomplete="off">
+    <input id="m-en" type="text" placeholder="e.g. Serendipity" autocomplete="off" oninput="onWordInput()">
+    <label style="display:flex;align-items:center;justify-content:space-between;">
+      音标
+      <span id="ph-status" style="font-size:11px;font-weight:500;color:var(--muted);letter-spacing:0;text-transform:none;"></span>
+    </label>
+    <input id="m-ph" type="text" placeholder="输入单词后自动获取…" autocomplete="off">
     <label>中文释义</label>
     <input id="m-zh" type="text" placeholder="e.g. 意外发现美好事物的能力" autocomplete="off">
     <label>词性（可选）</label>
@@ -813,6 +816,8 @@ function openModal() {
   buildColorPicker(); // rebuild with new selected
   document.getElementById('m-en').value = '';
   document.getElementById('m-ph').value = '';
+  const st = document.getElementById('ph-status'); if(st){ st.textContent=''; }
+  document.getElementById('m-ph').placeholder = '输入单词后自动获取…';
   document.getElementById('m-zh').value = '';
   document.getElementById('m-tag').value = '';
   document.getElementById('modal').classList.add('open');
@@ -864,6 +869,54 @@ function darken(hex, amount) {
   const g = Math.max(0, parseInt(c.slice(2,4),16)-amount);
   const b = Math.max(0, parseInt(c.slice(4,6),16)-amount);
   return `rgb(${r},${g},${b})`;
+}
+
+// ── AUTO PHONETIC ──
+let phTimer = null;
+
+function onWordInput() {
+  const word = document.getElementById('m-en').value.trim();
+  const statusEl = document.getElementById('ph-status');
+  const phEl = document.getElementById('m-ph');
+
+  clearTimeout(phTimer);
+
+  if (!word) {
+    statusEl.textContent = '';
+    phEl.placeholder = '输入单词后自动获取…';
+    return;
+  }
+
+  statusEl.textContent = '查询中…';
+  statusEl.style.color = 'var(--muted)';
+
+  phTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+      if (!res.ok) throw new Error('not found');
+      const data = await res.json();
+      // 找第一个有音标的 phonetic
+      let phonetic = '';
+      for (const entry of data) {
+        if (entry.phonetic) { phonetic = entry.phonetic; break; }
+        if (entry.phonetics) {
+          const p = entry.phonetics.find(p => p.text);
+          if (p) { phonetic = p.text; break; }
+        }
+      }
+      if (phonetic) {
+        phEl.value = phonetic;
+        statusEl.textContent = '✓ 已自动填入';
+        statusEl.style.color = '#43c59e';
+      } else {
+        statusEl.textContent = '未找到音标，可手动输入';
+        statusEl.style.color = 'var(--muted)';
+      }
+    } catch(e) {
+      statusEl.textContent = '未找到，可手动输入';
+      statusEl.style.color = 'var(--muted)';
+    }
+  }, 600); // 停止输入 600ms 后再查询
 }
 
 // ── INIT ──
