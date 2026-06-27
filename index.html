@@ -699,8 +699,11 @@ function render() {
             ${card.ph ? `<div class="card-phonetic">${esc(card.ph)}</div>` : ''}
           </div>
           <div class="edit-overlay">
-            <input class="inline-input" placeholder="英文单词" value="${esc(card.en)}" id="edit-en-${card.id}">
-            <input class="inline-input phonetic-input" placeholder="音标" value="${esc(card.ph)}" id="edit-ph-${card.id}">
+            <input class="inline-input" placeholder="英文单词" value="${esc(card.en)}" id="edit-en-${card.id}" oninput="onCardWordInput(${card.id})">
+            <div style="position:relative;width:100%">
+              <input class="inline-input phonetic-input" placeholder="音标（自动获取）" value="${esc(card.ph)}" id="edit-ph-${card.id}">
+              <span id="card-ph-status-${card.id}" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:rgba(255,255,255,0.7);pointer-events:none;"></span>
+            </div>
             <button class="save-btn" onclick="saveFront(${card.id}, event)">✓ 保存</button>
           </div>
           <div class="card-hint">点击查看释义 →</div>
@@ -873,6 +876,47 @@ function darken(hex, amount) {
 
 // ── AUTO PHONETIC ──
 let phTimer = null;
+let cardPhTimers = {};
+
+async function fetchPhonetic(word) {
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    for (const entry of data) {
+      if (entry.phonetic) return entry.phonetic;
+      if (entry.phonetics) {
+        const p = entry.phonetics.find(p => p.text);
+        if (p) return p.text;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+
+// 卡片内联编辑时自动获取音标
+function onCardWordInput(id) {
+  const word = document.getElementById(`edit-en-${id}`)?.value.trim();
+  const phEl = document.getElementById(`edit-ph-${id}`);
+  const statusEl = document.getElementById(`card-ph-status-${id}`);
+
+  clearTimeout(cardPhTimers[id]);
+
+  if (!word || !phEl) return;
+  if (statusEl) { statusEl.textContent = '查询中…'; }
+
+  cardPhTimers[id] = setTimeout(async () => {
+    const phonetic = await fetchPhonetic(word);
+    if (phonetic) {
+      phEl.value = phonetic;
+      if (statusEl) { statusEl.textContent = '✓'; }
+      setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 2000);
+    } else {
+      if (statusEl) { statusEl.textContent = '未找到'; }
+      setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 2000);
+    }
+  }, 600);
+}
 
 function onWordInput() {
   const word = document.getElementById('m-en').value.trim();
@@ -883,7 +927,6 @@ function onWordInput() {
 
   if (!word) {
     statusEl.textContent = '';
-    phEl.placeholder = '输入单词后自动获取…';
     return;
   }
 
@@ -891,32 +934,16 @@ function onWordInput() {
   statusEl.style.color = 'var(--muted)';
 
   phTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-      if (!res.ok) throw new Error('not found');
-      const data = await res.json();
-      // 找第一个有音标的 phonetic
-      let phonetic = '';
-      for (const entry of data) {
-        if (entry.phonetic) { phonetic = entry.phonetic; break; }
-        if (entry.phonetics) {
-          const p = entry.phonetics.find(p => p.text);
-          if (p) { phonetic = p.text; break; }
-        }
-      }
-      if (phonetic) {
-        phEl.value = phonetic;
-        statusEl.textContent = '✓ 已自动填入';
-        statusEl.style.color = '#43c59e';
-      } else {
-        statusEl.textContent = '未找到音标，可手动输入';
-        statusEl.style.color = 'var(--muted)';
-      }
-    } catch(e) {
+    const phonetic = await fetchPhonetic(word);
+    if (phonetic) {
+      phEl.value = phonetic;
+      statusEl.textContent = '✓ 已自动填入';
+      statusEl.style.color = '#43c59e';
+    } else {
       statusEl.textContent = '未找到，可手动输入';
       statusEl.style.color = 'var(--muted)';
     }
-  }, 600); // 停止输入 600ms 后再查询
+  }, 600);
 }
 
 // ── INIT ──
