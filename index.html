@@ -611,8 +611,8 @@ const COLORS = [
 let selectedColor = COLORS[0].hex;
 let currentFilter = 'all';
 
-// ── SEED DATA ──
-let cards = [
+// ── SEED DATA（仅首次使用时加载）──
+const SEED = [
   { id:1, en:'Serendipity', ph:'/ˌser.ənˈdɪp.ɪ.ti/', zh:'意外发现美好事物的能力', tag:'n.', color:'#6c63ff', status:'new' },
   { id:2, en:'Ephemeral',   ph:'/ɪˈfem.ər.əl/',     zh:'短暂的，转瞬即逝的',     tag:'adj.', color:'#ff6584', status:'learning' },
   { id:3, en:'Resilient',   ph:'/rɪˈzɪl.i.ənt/',    zh:'有弹性的，能迅速恢复的', tag:'adj.', color:'#43c59e', status:'known' },
@@ -621,6 +621,33 @@ let cards = [
   { id:6, en:'Pragmatic',   ph:'/præɡˈmæt.ɪk/',    zh:'务实的，实用主义的',     tag:'adj.', color:'#e47adb', status:'new' },
 ];
 
+// ── 本地存储读写 ──
+const STORAGE_KEY = 'card-english-data';
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ cards, nextId }));
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      cards = data.cards || SEED;
+      nextId = data.nextId || 10;
+    } else {
+      // 第一次打开，加载示例数据
+      cards = SEED;
+      nextId = 10;
+      saveToStorage();
+    }
+  } catch(e) {
+    cards = SEED;
+    nextId = 10;
+  }
+}
+
+let cards = [];
 let nextId = 10;
 
 // ── COLOR PICKER ──
@@ -744,6 +771,7 @@ function saveFront(id, e) {
   const card = cards.find(c => c.id === id);
   card.en = document.getElementById(`edit-en-${id}`).value.trim() || card.en;
   card.ph = document.getElementById(`edit-ph-${id}`).value.trim();
+  saveToStorage();
   render();
 }
 
@@ -752,6 +780,7 @@ function saveBack(id, e) {
   const card = cards.find(c => c.id === id);
   card.zh  = document.getElementById(`edit-zh-${id}`).value.trim() || card.zh;
   card.tag = document.getElementById(`edit-tag-${id}`).value.trim();
+  saveToStorage();
   render();
   // restore flipped state
   setTimeout(() => {
@@ -765,6 +794,7 @@ function deleteCard(id, e) {
   e.stopPropagation();
   if (!confirm('确定删除这张卡片？')) return;
   cards = cards.filter(c => c.id !== id);
+  saveToStorage();
   render();
 }
 
@@ -806,6 +836,7 @@ function addCard() {
     color: selectedColor,
     status: 'new',
   });
+  saveToStorage();
   closeModal();
   render();
 }
@@ -836,6 +867,7 @@ function darken(hex, amount) {
 }
 
 // ── INIT ──
+loadFromStorage();
 render();
 </script>
 </body>
