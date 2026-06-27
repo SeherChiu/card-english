@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>卡片英语</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --border: #2e2e3a;
+    --text: #f0f0f4;
+    --muted: #888899;
+    --accent: #7c6ef7;
+
+    --card-1: #6c63ff;
+    --card-2: #ff6584;
+    --card-3: #43c59e;
+    --card-4: #f7a541;
+    --card-5: #5bc8f5;
+    --card-6: #e47adb;
+    --card-7: #ff8c5a;
+    --card-8: #67d964;
+  }
+
+  body {
+    font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 32px 40px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--card-1), var(--card-6));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .logo span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .stat-badge {
+    padding: 6px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .stat-badge b {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .btn-add {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+
+  .btn-add:hover { opacity: .88; transform: translateY(-1px); }
+  .btn-add:active { transform: translateY(0); }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    padding: 20px 40px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: rgba(124,110,247,.12);
+  }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 8px 40px 40px;
+  }
+
+  /* ── CARD ── */
+  .card-wrapper {
+    perspective: 900px;
+    height: 160px;
+  }
+
+  .card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .5s cubic-bezier(.4,0,.2,1);
+    cursor: pointer;
+  }
+
+  .card.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* Front face – English */
+  .card-front {
+    color: #fff;
+  }
+
+  .card-front::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    opacity: .18;
+    background: radial-gradient(circle at 30% 30%, #fff, transparent 70%);
+    pointer-events: none;
+  }
+
+  .card-en {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    text-align: center;
+    word-break: break-word;
+  }
+
+  .card-phonetic {
+    font-size: 12px;
+    opacity: .7;
+    margin-top: 6px;
+    font-weight: 400;
+    letter-spacing: .5px;
+  }
+
+  .card-hint {
+    position: absolute;
+    bottom: 12px;
+    right: 14px;
+    font-size: 11px;
+    opacity: .55;
+    font-weight: 500;
+  }
+
+  /* Back face – Chinese */
+  .card-back {
+    transform: rotateY(180deg);
+    background: #fff;
+    color: #1a1a22;
+  }
+
+  .card-zh {
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+
+  .card-tag {
+    font-size: 11px;
+    color: #888;
+    margin-top: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+  }
+
+  /* ── EDIT OVERLAY on front ── */
+  .card-front .edit-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .card-front.editing .edit-overlay { display: flex; }
+  .card-front.editing .card-display  { display: none; }
+
+  .card-front .card-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  /* ── EDIT OVERLAY on back ── */
+  .card-back .edit-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .card-back.editing .edit-overlay { display: flex; }
+  .card-back.editing .card-display  { display: none; }
+
+  .card-back .card-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  /* ── INLINE INPUT ── */
+  .inline-input {
+    width: 100%;
+    background: rgba(255,255,255,.15);
+    border: 1.5px solid rgba(255,255,255,.4);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+  }
+
+  .inline-input::placeholder { color: rgba(255,255,255,.5); }
+
+  .inline-input-zh {
+    background: rgba(0,0,0,.06);
+    border-color: rgba(0,0,0,.2);
+    color: #1a1a22;
+  }
+
+  .inline-input-zh::placeholder { color: rgba(0,0,0,.35); }
+
+  .phonetic-input {
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .save-btn {
+    padding: 5px 16px;
+    border-radius: 7px;
+    border: none;
+    background: rgba(255,255,255,.9);
+    color: #1a1a22;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+    letter-spacing: .3px;
+  }
+
+  .save-btn:hover { opacity: .8; }
+
+  .save-btn-zh {
+    background: #1a1a22;
+    color: #fff;
+  }
+
+  /* ── EDIT & DELETE action icons (top-right of card) ── */
+  .card-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity .2s;
+    z-index: 10;
+  }
+
+  .card-wrapper:hover .card-actions { opacity: 1; }
+
+  .icon-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: transform .1s;
+    background: rgba(255,255,255,.22);
+    color: #fff;
+    backdrop-filter: blur(4px);
+  }
+
+  .icon-btn:hover { transform: scale(1.12); }
+
+  .icon-btn.del { background: rgba(255,80,80,.3); }
+  .icon-btn.edit { background: rgba(255,255,255,.22); }
+
+  /* back-side icons */
+  .card-back ~ .card-actions .icon-btn {
+    background: rgba(0,0,0,.1);
+    color: #1a1a22;
+  }
+
+  /* ── ADD CARD placeholder ── */
+  .card-add {
+    height: 160px;
+    border-radius: 16px;
+    border: 2px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .2s;
+  }
+
+  .card-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,110,247,.05);
+  }
+
+  .card-add-icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty p { margin-top: 10px; font-size: 14px; }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    width: 380px;
+    max-width: 95vw;
+    animation: popIn .22s cubic-bezier(.4,0,.2,1);
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(.93) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+
+  .modal label:first-of-type { margin-top: 0; }
+
+  .modal input, .modal select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+
+  .color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform .1s, border-color .1s;
+  }
+
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.selected { border-color: #fff; transform: scale(1.1); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    padding: 11px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .btn-cancel:hover { color: var(--text); border-color: var(--text); }
+
+  .btn-confirm {
+    flex: 2;
+    padding: 11px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+
+  .btn-confirm:hover { opacity: .88; }
+
+  @media (max-width: 600px) {
+    header { padding: 20px; flex-wrap: wrap; gap: 12px; }
+    .filter-bar { padding: 12px 20px; overflow-x: auto; }
+    .grid { padding: 8px 20px 40px; gap: 14px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🃏</div>
+    <div>
+      <h1>卡片英语</h1>
+      <span>点击卡片查看中文释义</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="stat-badge">共 <b id="total-count">0</b> 张</div>
+    <button class="btn-add" onclick="openModal()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      添加单词
+    </button>
+  </div>
+</header>
+
+<!-- ── FILTER BAR ── -->
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterCards('all', this)">全部</button>
+  <button class="filter-btn" onclick="filterCards('new', this)">🔵 新词</button>
+  <button class="filter-btn" onclick="filterCards('learning', this)">🟡 学习中</button>
+  <button class="filter-btn" onclick="filterCards('known', this)">🟢 已掌握</button>
+</div>
+
+<!-- ── CARD GRID ── -->
+<div class="grid" id="grid"></div>
+
+<!-- ── ADD MODAL ── -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h2>✏️ 添加单词卡片</h2>
+    <label>英文单词</label>
+    <input id="m-en" type="text" placeholder="e.g. Serendipity" autocomplete="off">
+    <label>音标（可选）</label>
+    <input id="m-ph" type="text" placeholder="e.g. /ˌser.ənˈdɪp.ɪ.ti/" autocomplete="off">
+    <label>中文释义</label>
+    <input id="m-zh" type="text" placeholder="e.g. 意外发现美好事物的能力" autocomplete="off">
+    <label>词性（可选）</label>
+    <input id="m-tag" type="text" placeholder="e.g. n. / v. / adj." autocomplete="off">
+    <label>卡片颜色</label>
+    <div class="color-picker" id="color-picker"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-confirm" onclick="addCard()">添加卡片</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PALETTE ──
+const COLORS = [
+  { key:'card-1', hex:'#6c63ff' },
+  { key:'card-2', hex:'#ff6584' },
+  { key:'card-3', hex:'#43c59e' },
+  { key:'card-4', hex:'#f7a541' },
+  { key:'card-5', hex:'#5bc8f5' },
+  { key:'card-6', hex:'#e47adb' },
+  { key:'card-7', hex:'#ff8c5a' },
+  { key:'card-8', hex:'#67d964' },
+];
+
+let selectedColor = COLORS[0].hex;
+let currentFilter = 'all';
+
+// ── SEED DATA ──
+let cards = [
+  { id:1, en:'Serendipity', ph:'/ˌser.ənˈdɪp.ɪ.ti/', zh:'意外发现美好事物的能力', tag:'n.', color:'#6c63ff', status:'new' },
+  { id:2, en:'Ephemeral',   ph:'/ɪˈfem.ər.əl/',     zh:'短暂的，转瞬即逝的',     tag:'adj.', color:'#ff6584', status:'learning' },
+  { id:3, en:'Resilient',   ph:'/rɪˈzɪl.i.ənt/',    zh:'有弹性的，能迅速恢复的', tag:'adj.', color:'#43c59e', status:'known' },
+  { id:4, en:'Eloquent',    ph:'/ˈel.ə.kwənt/',     zh:'雄辩的，有说服力的',     tag:'adj.', color:'#f7a541', status:'new' },
+  { id:5, en:'Nostalgia',   ph:'/nɒˈstæl.dʒ.ə/',   zh:'对过去的怀念，怀旧情绪', tag:'n.',   color:'#5bc8f5', status:'learning' },
+  { id:6, en:'Pragmatic',   ph:'/præɡˈmæt.ɪk/',    zh:'务实的，实用主义的',     tag:'adj.', color:'#e47adb', status:'new' },
+];
+
+let nextId = 10;
+
+// ── COLOR PICKER ──
+function buildColorPicker() {
+  const el = document.getElementById('color-picker');
+  el.innerHTML = '';
+  COLORS.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch' + (c.hex === selectedColor ? ' selected' : '');
+    s.style.background = c.hex;
+    s.title = c.hex;
+    s.onclick = () => {
+      selectedColor = c.hex;
+      document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+    };
+    el.appendChild(s);
+  });
+}
+
+// ── RENDER ──
+function render() {
+  const grid = document.getElementById('grid');
+  const filtered = cards.filter(c => currentFilter === 'all' || c.status === currentFilter);
+  document.getElementById('total-count').textContent = cards.length;
+
+  grid.innerHTML = '';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty"><div style="font-size:40px">📭</div><p>暂无单词卡片，点击右上角添加吧！</p></div>';
+    return;
+  }
+
+  filtered.forEach(card => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-wrapper';
+    wrapper.dataset.id = card.id;
+
+    wrapper.innerHTML = `
+      <div class="card" id="card-${card.id}">
+
+        <!-- FRONT -->
+        <div class="card-face card-front" style="background: linear-gradient(135deg, ${card.color}, ${darken(card.color, 20)})">
+          <div class="card-display">
+            <div class="card-en">${esc(card.en)}</div>
+            ${card.ph ? `<div class="card-phonetic">${esc(card.ph)}</div>` : ''}
+          </div>
+          <div class="edit-overlay">
+            <input class="inline-input" placeholder="英文单词" value="${esc(card.en)}" id="edit-en-${card.id}">
+            <input class="inline-input phonetic-input" placeholder="音标" value="${esc(card.ph)}" id="edit-ph-${card.id}">
+            <button class="save-btn" onclick="saveFront(${card.id}, event)">✓ 保存</button>
+          </div>
+          <div class="card-hint">点击查看释义 →</div>
+        </div>
+
+        <!-- BACK -->
+        <div class="card-face card-back">
+          <div class="card-display">
+            <div class="card-zh">${esc(card.zh)}</div>
+            ${card.tag ? `<div class="card-tag">${esc(card.tag)}</div>` : ''}
+          </div>
+          <div class="edit-overlay">
+            <input class="inline-input inline-input-zh" placeholder="中文释义" value="${esc(card.zh)}" id="edit-zh-${card.id}">
+            <input class="inline-input inline-input-zh phonetic-input" placeholder="词性 e.g. n." value="${esc(card.tag)}" id="edit-tag-${card.id}">
+            <button class="save-btn save-btn-zh" onclick="saveBack(${card.id}, event)">✓ 保存</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ACTIONS (outside card so no flip) -->
+      <div class="card-actions">
+        <button class="icon-btn edit" title="编辑" onclick="editCard(${card.id}, event)">✏️</button>
+        <button class="icon-btn del"  title="删除" onclick="deleteCard(${card.id}, event)">✕</button>
+      </div>
+    `;
+
+    // flip on click (not when editing)
+    wrapper.addEventListener('click', e => {
+      if (e.target.closest('.icon-btn')) return;
+      if (e.target.closest('.edit-overlay')) return;
+      if (e.target.closest('input')) return;
+      const cardEl = document.getElementById(`card-${card.id}`);
+      cardEl.classList.toggle('flipped');
+    });
+
+    grid.appendChild(wrapper);
+  });
+
+  // Add-card placeholder
+  const addEl = document.createElement('div');
+  addEl.className = 'card-add';
+  addEl.innerHTML = '<div class="card-add-icon">+</div><span>添加单词</span>';
+  addEl.onclick = openModal;
+  grid.appendChild(addEl);
+}
+
+// ── EDIT CARD (toggle inline editing) ──
+function editCard(id, e) {
+  e.stopPropagation();
+  const cardEl = document.getElementById(`card-${id}`);
+  const front = cardEl.querySelector('.card-front');
+  const back  = cardEl.querySelector('.card-back');
+  const isFlipped = cardEl.classList.contains('flipped');
+
+  if (!isFlipped) {
+    front.classList.toggle('editing');
+    if (front.classList.contains('editing')) {
+      setTimeout(() => document.getElementById(`edit-en-${id}`)?.focus(), 50);
+    }
+  } else {
+    back.classList.toggle('editing');
+    if (back.classList.contains('editing')) {
+      setTimeout(() => document.getElementById(`edit-zh-${id}`)?.focus(), 50);
+    }
+  }
+}
+
+function saveFront(id, e) {
+  e.stopPropagation();
+  const card = cards.find(c => c.id === id);
+  card.en = document.getElementById(`edit-en-${id}`).value.trim() || card.en;
+  card.ph = document.getElementById(`edit-ph-${id}`).value.trim();
+  render();
+}
+
+function saveBack(id, e) {
+  e.stopPropagation();
+  const card = cards.find(c => c.id === id);
+  card.zh  = document.getElementById(`edit-zh-${id}`).value.trim() || card.zh;
+  card.tag = document.getElementById(`edit-tag-${id}`).value.trim();
+  render();
+  // restore flipped state
+  setTimeout(() => {
+    const cardEl = document.getElementById(`card-${id}`);
+    if (cardEl) cardEl.classList.add('flipped');
+  }, 30);
+}
+
+// ── DELETE ──
+function deleteCard(id, e) {
+  e.stopPropagation();
+  if (!confirm('确定删除这张卡片？')) return;
+  cards = cards.filter(c => c.id !== id);
+  render();
+}
+
+// ── FILTER ──
+function filterCards(status, btn) {
+  currentFilter = status;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ── MODAL ──
+function openModal() {
+  buildColorPicker();
+  selectedColor = COLORS[nextId % COLORS.length].hex;
+  buildColorPicker(); // rebuild with new selected
+  document.getElementById('m-en').value = '';
+  document.getElementById('m-ph').value = '';
+  document.getElementById('m-zh').value = '';
+  document.getElementById('m-tag').value = '';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-en').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function addCard() {
+  const en = document.getElementById('m-en').value.trim();
+  const zh = document.getElementById('m-zh').value.trim();
+  if (!en || !zh) { alert('英文单词和中文释义为必填项'); return; }
+  cards.push({
+    id: nextId++,
+    en,
+    ph: document.getElementById('m-ph').value.trim(),
+    zh,
+    tag: document.getElementById('m-tag').value.trim(),
+    color: selectedColor,
+    status: 'new',
+  });
+  closeModal();
+  render();
+}
+
+// ── close modal on backdrop click ──
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+// ── Enter key in modal ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && document.getElementById('modal').classList.contains('open')) addCard();
+});
+
+// ── UTILS ──
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function darken(hex, amount) {
+  let c = hex.replace('#','');
+  if (c.length === 3) c = c.split('').map(x=>x+x).join('');
+  const r = Math.max(0, parseInt(c.slice(0,2),16)-amount);
+  const g = Math.max(0, parseInt(c.slice(2,4),16)-amount);
+  const b = Math.max(0, parseInt(c.slice(4,6),16)-amount);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ── INIT ──
+render();
+</script>
+</body>
+</html>
