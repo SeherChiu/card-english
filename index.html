@@ -874,24 +874,32 @@ function darken(hex, amount) {
   return `rgb(${r},${g},${b})`;
 }
 
-// ── AUTO PHONETIC ──
+// ── AUTO PHONETIC via Claude API ──
 let phTimer = null;
 let cardPhTimers = {};
 
 async function fetchPhonetic(word) {
   try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 60,
+        system: 'You are a professional dictionary. When given an English word, reply with ONLY its standard IPA phonetic transcription as it appears in Oxford or Cambridge dictionary, enclosed in slashes. No explanation, no alternatives, no extra text. Use proper IPA stress marks (ˈ for primary stress). Example input: hello  Example output: /həˈləʊ/',
+        messages: [{
+          role: 'user',
+          content: word
+        }]
+      })
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    for (const entry of data) {
-      if (entry.phonetic) return entry.phonetic;
-      if (entry.phonetics) {
-        const p = entry.phonetics.find(p => p.text);
-        if (p) return p.text;
-      }
-    }
-  } catch(e) {}
-  return null;
+    const text = data.content?.[0]?.text?.trim();
+    // extract first /.../ pattern to be safe
+    const match = text && text.match(/\/[^/]+\//);
+    return match ? match[0] : null;
+  } catch(e) { return null; }
 }
 
 // 卡片内联编辑时自动获取音标
@@ -915,7 +923,7 @@ function onCardWordInput(id) {
       if (statusEl) { statusEl.textContent = '未找到'; }
       setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 2000);
     }
-  }, 600);
+  }, 700);
 }
 
 function onWordInput() {
@@ -926,24 +934,21 @@ function onWordInput() {
   clearTimeout(phTimer);
 
   if (!word) {
-    statusEl.textContent = '';
+    if (statusEl) statusEl.textContent = '';
     return;
   }
 
-  statusEl.textContent = '查询中…';
-  statusEl.style.color = 'var(--muted)';
+  if (statusEl) { statusEl.textContent = '查询中…'; statusEl.style.color = 'var(--muted)'; }
 
   phTimer = setTimeout(async () => {
     const phonetic = await fetchPhonetic(word);
     if (phonetic) {
       phEl.value = phonetic;
-      statusEl.textContent = '✓ 已自动填入';
-      statusEl.style.color = '#43c59e';
+      if (statusEl) { statusEl.textContent = '✓ 已自动填入'; statusEl.style.color = '#43c59e'; }
     } else {
-      statusEl.textContent = '未找到，可手动输入';
-      statusEl.style.color = 'var(--muted)';
+      if (statusEl) { statusEl.textContent = '未找到，可手动输入'; statusEl.style.color = 'var(--muted)'; }
     }
-  }, 600);
+  }, 700);
 }
 
 // ── INIT ──
